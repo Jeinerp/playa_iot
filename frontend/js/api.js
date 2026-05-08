@@ -2,7 +2,7 @@
    API.JS — Centralized HTTP Service
    ======================================== */
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 class ApiService {
     async request(endpoint, options = {}) {
