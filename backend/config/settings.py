@@ -11,9 +11,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 import os
 from pathlib import Path
-from dotenv import load_dotenv # Importar la librería
-
-load_dotenv()
+from dotenv import load_dotenv
+import dj_database_url # Añadir esto
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,9 +26,12 @@ SECRET_KEY = 'django-insecure-v1k-gcbg)ft5yasxn=igshx9n=5*b!+3c7*^oqkr+15gm6ug1&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# Puedes poner el link específico o un asterisco para permitir todos mientras terminas el proyecto
-ALLOWED_HOSTS = ['monitoreo-iot-production.up.railway.app', 'localhost', '127.0.0.1']
-CSRF_TRUSTED_ORIGINS = ['https://monitoreo-iot-production.up.railway.app']
+# Permitir el dominio de Railway y localhost
+ALLOWED_HOSTS = ['*'] # En producción puedes ser más específico
+CSRF_TRUSTED_ORIGINS = [
+    'https://playa-iot-production.up.railway.app',
+    'https://confident-insight-production.up.railway.app'
+]
 
 # Application definition
 
@@ -79,21 +81,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+# Detecta automáticamente DATABASE_URL de Railway
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'railway',
-        'USER': 'root',
-        'PASSWORD': 'GvdBawQyKHbdPBhnpwZijCoILRpoRMXv',
-        'HOST': 'switchyard.proxy.rlwy.net',
-        'PORT': '44721',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'charset': 'utf8mb4',
-        },
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 
