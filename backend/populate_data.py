@@ -114,24 +114,40 @@ def populate():
 
     print(f"Created/found {len(dispositivos)} devices with sensors and buzzers.")
 
-    # 5. Lecturas (Generate historical data for the last 24 hours)
-    print("Generating sensor readings...")
+    # 5. Lecturas (Generate historical data for all sensor types)
+    print("Generating sensor readings for ALL variable types...")
     sensors = Sensor.objects.all()
     now = datetime.now()
     readings_count = 0
     
     for sensor in sensors:
-        # Check if already has readings
-        if LecturaSensor.objects.filter(id_sensor=sensor).count() > 50:
+        existing = LecturaSensor.objects.filter(id_sensor=sensor).count()
+        if existing >= 40:
+            print(f"  Sensor '{sensor.nombre}' ya tiene {existing} lecturas, saltando.")
             continue
-            
-        base_val = 25 if sensor.id_tipo_variable.nombre == "Temperatura" else 60
-        if sensor.id_tipo_variable.nombre == "Nivel de Agua": base_val = 2
-        if sensor.id_tipo_variable.nombre == "Calidad del Aire": base_val = 40
         
-        for h in range(48): # 48 hours
+        var_name = sensor.id_tipo_variable.nombre
+        # Realistic base values per variable type
+        if var_name == "Temperatura":
+            base_val = 28  # Tropical beach temperature
+        elif var_name == "Humedad":
+            base_val = 72  # Coastal humidity
+        elif var_name == "Nivel de Agua":
+            base_val = 1.8  # Sea level in meters
+        elif var_name == "Calidad del Aire":
+            base_val = 42  # Moderate AQI
+        else:
+            base_val = 50
+        
+        # Range of variation per type
+        variation = 5 if var_name != "Nivel de Agua" else 0.8
+        
+        print(f"  Generando lecturas para: {sensor.nombre} ({var_name})...")
+        for h in range(48):  # 48 hours of data
             time = now - timedelta(hours=h)
-            val = base_val + random.uniform(-5, 5)
+            val = base_val + random.uniform(-variation, variation)
+            if var_name == "Nivel de Agua":
+                val = max(0.2, val)  # Can't be negative
             
             LecturaSensor.objects.create(
                 id_sensor=sensor,
@@ -142,7 +158,7 @@ def populate():
             )
             readings_count += 1
             
-    print(f"Generated {readings_count} sensor readings.")
+    print(f"Generated {readings_count} sensor readings across all variables.")
 
     # 6. Umbrales
     for var in variables:

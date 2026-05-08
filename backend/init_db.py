@@ -18,12 +18,15 @@ def initialize():
     else:
         print("--- El usuario admin ya existe ---")
 
-    print("--- Cargando datos iniciales ---")
+    print("--- Cargando/actualizando datos de sensores ---")
     try:
         import populate_data
-        populate_data.populate() 
+        populate_data.populate()
+        print("--- Datos cargados exitosamente ---")
     except Exception as e:
+        import traceback
         print(f"Error cargando datos: {e}")
+        traceback.print_exc()
 
     print("--- Inicialización completada con éxito ---")
 
