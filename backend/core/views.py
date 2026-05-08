@@ -37,10 +37,6 @@ class DashboardSummaryView(APIView):
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 class UsuarioViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UsuarioSerializer
-    
-class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
 

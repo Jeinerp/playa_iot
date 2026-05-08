@@ -19,10 +19,10 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         if request.user.is_superuser:
             return True
 
-        # Verificar si tiene el rol 'Administrador'
+        # Verificar si tiene el rol 'Administrador' o 'SUPERADMINISTRADOR'
         is_admin = UsuarioHasRol.objects.filter(
             usuario_idusuarios=request.user,
-            rol_idrol__nombre='Administrador'
+            rol_idrol__nombre__in=['Administrador', 'SUPERADMINISTRADOR']
         ).exists()
 
         return is_admin
