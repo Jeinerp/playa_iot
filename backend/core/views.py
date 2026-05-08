@@ -117,3 +117,4 @@ class RespuestaComandoViewSet(viewsets.ModelViewSet):
 class AuditoriaSistemaViewSet(viewsets.ModelViewSet):
     queryset = AuditoriaSistema.objects.all().order_by('-fecha_hora')
     serializer_class = AuditoriaSistemaSerializer
+    permission_classes = [permissions.IsAuthenticated]
