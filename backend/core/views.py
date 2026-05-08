@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
@@ -15,6 +15,8 @@ class StandardPagination(PageNumberPagination):
 
 class DashboardSummaryView(APIView):
     """Devuelve todos los datos del dashboard en una sola llamada."""
+    permission_classes = [permissions.IsAuthenticated]
+    
     def get(self, request):
         dispositivos = DispositivoIot.objects.all()
         sensores = Sensor.objects.all()
