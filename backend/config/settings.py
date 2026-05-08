@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url # Añadir esto
+
+load_dotenv() # Añadir esto
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
