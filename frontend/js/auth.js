@@ -2,7 +2,7 @@
    AUTH.JS — Authentication Service
    ======================================== */
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 class AuthService {
     async login(username, password) {
