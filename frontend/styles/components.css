@@ -162,6 +162,12 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     animation: fadeIn var(--transition-base) ease;
+    width: 100%;
+}
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .table-toolbar {
     display: flex;

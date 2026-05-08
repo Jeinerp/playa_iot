@@ -32,7 +32,7 @@ export function renderTable({ containerId, columns, data, actions = [], searchab
                     <div class="text-sm text-muted">${displayData.length} registros</div>
                 </div>` : ''}
                 ${displayData.length > 0 ? `
-                <div style="overflow-x:auto;">
+                <div class="table-wrapper">
                 <table class="data-table">
                     <thead>
                         <tr>

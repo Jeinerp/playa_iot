@@ -88,6 +88,12 @@ function renderAppLayout(pageRenderer, route) {
         link.classList.toggle('active', link.getAttribute('data-route') === route);
     });
 
+    // Auto-close sidebar on mobile after navigation
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar && window.innerWidth <= 1024) {
+        sidebar.classList.remove('active');
+    }
+
     return pageRenderer();
 }
 
