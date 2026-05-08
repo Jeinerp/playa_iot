@@ -56,7 +56,10 @@ function ensureAppLayout() {
     layoutMounted = true;
     
     // Add role-based body class for UI restrictions
-    if (auth.getRoleName() !== 'Administrador') {
+    const roleName = auth.getRoleName().toUpperCase();
+    const isAdmin = ['ADMINISTRADOR', 'SUPERADMINISTRADOR'].includes(roleName);
+    
+    if (!isAdmin) {
         document.body.classList.add('role-readonly');
     } else {
         document.body.classList.remove('role-readonly');
