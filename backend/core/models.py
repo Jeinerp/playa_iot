@@ -277,6 +277,8 @@ class EstadoBuzzer(models.Model):
 
     class Meta:
         db_table = 'estado_buzzer'
+        verbose_name = "Estado de Buzzer"
+        verbose_name_plural = "17. Estados de Buzzers (Historial)"
 
 class RespuestaComando(models.Model):
     id_respuesta = models.BigAutoField(primary_key=True)
@@ -292,3 +294,5 @@ class RespuestaComando(models.Model):
 
     class Meta:
         db_table = 'respuesta_comando'
+        verbose_name = "Respuesta de Comando"
+        verbose_name_plural = "18. Respuestas de Dispositivos"
