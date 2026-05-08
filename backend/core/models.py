@@ -13,6 +13,8 @@ class Usuario(models.Model):
 
     class Meta:
         db_table = 'usuario'
+        verbose_name = "Usuario"
+        verbose_name_plural = "01. Usuarios del Sistema"
 
 class Rol(models.Model):
     idrol = models.AutoField(primary_key=True)
@@ -24,6 +26,8 @@ class Rol(models.Model):
 
     class Meta:
         db_table = 'rol'
+        verbose_name = "Rol"
+        verbose_name_plural = "02. Roles"
 
 class Recurso(models.Model):
     idRecursos = models.AutoField(primary_key=True)
@@ -41,6 +45,8 @@ class Recurso(models.Model):
 
     class Meta:
         db_table = 'recurso'
+        verbose_name = "Recurso"
+        verbose_name_plural = "03. Recursos (URLs)"
 
 class UsuarioHasRol(models.Model):
     # CAMBIO CLAVE: Ahora apunta a settings.AUTH_USER_MODEL (la tabla de arriba en el admin)
@@ -61,6 +67,8 @@ class UsuarioHasRol(models.Model):
 
     class Meta:
         db_table = 'usuario_has_rol'
+        verbose_name = "Asignación de Rol"
+        verbose_name_plural = "04. Usuarios con Roles"
         unique_together = (('usuario_idusuarios', 'rol_idrol'),)
 
 class RecursoHasRol(models.Model):
@@ -72,6 +80,8 @@ class RecursoHasRol(models.Model):
 
     class Meta:
         db_table = 'recurso_has_rol'
+        verbose_name = "Permiso de Recurso"
+        verbose_name_plural = "05. Permisos por Rol"
         unique_together = (('recurso_idrecursos', 'rol_idrol'),)
 
 class ZonaMonitoreo(models.Model):
@@ -87,6 +97,8 @@ class ZonaMonitoreo(models.Model):
 
     class Meta:
         db_table = 'zona_monitoreo'
+        verbose_name = "Zona de Monitoreo"
+        verbose_name_plural = "06. Zonas de Monitoreo"
 
 class DispositivoIot(models.Model):
     id_dispositivo = models.AutoField(primary_key=True)
@@ -105,6 +117,8 @@ class DispositivoIot(models.Model):
 
     class Meta:
         db_table = 'dispositivo_iot'
+        verbose_name = "Dispositivo IoT"
+        verbose_name_plural = "07. Dispositivos IoT"
 
 class TipoVariable(models.Model):
     id_tipo_variable = models.AutoField(primary_key=True)
@@ -118,6 +132,8 @@ class TipoVariable(models.Model):
 
     class Meta:
         db_table = 'tipo_variable'
+        verbose_name = "Tipo de Variable"
+        verbose_name_plural = "08. Tipos de Variables"
 
 class Sensor(models.Model):
     id_sensor = models.AutoField(primary_key=True)
@@ -134,6 +150,8 @@ class Sensor(models.Model):
 
     class Meta:
         db_table = 'sensor'
+        verbose_name = "Sensor"
+        verbose_name_plural = "09. Sensores"
 
 class LecturaSensor(models.Model):
     id_lectura = models.BigAutoField(primary_key=True)
@@ -148,6 +166,8 @@ class LecturaSensor(models.Model):
 
     class Meta:
         db_table = 'lectura_sensor'
+        verbose_name = "Lectura de Sensor"
+        verbose_name_plural = "10. Histórico de Lecturas"
 
 class EstadoAmbiental(models.Model):
     id_estado_ambiental = models.AutoField(primary_key=True)
@@ -161,6 +181,8 @@ class EstadoAmbiental(models.Model):
 
     class Meta:
         db_table = 'estado_ambiental'
+        verbose_name = "Estado Ambiental"
+        verbose_name_plural = "11. Estados Ambientales"
 
 class UmbralAlerta(models.Model):
     id_umbral = models.AutoField(primary_key=True)
@@ -175,6 +197,8 @@ class UmbralAlerta(models.Model):
 
     class Meta:
         db_table = 'umbral_alerta'
+        verbose_name = "Umbral de Alerta"
+        verbose_name_plural = "12. Umbrales de Alertas"
 
 class Alerta(models.Model):
     id_alerta = models.BigAutoField(primary_key=True)
@@ -191,6 +215,8 @@ class Alerta(models.Model):
 
     class Meta:
         db_table = 'alerta'
+        verbose_name = "Alerta"
+        verbose_name_plural = "13. Alertas Generadas"
 
 class Buzzer(models.Model):
     id_buzzer = models.AutoField(primary_key=True)
@@ -203,6 +229,8 @@ class Buzzer(models.Model):
 
     class Meta:
         db_table = 'buzzer'
+        verbose_name = "Buzzer"
+        verbose_name_plural = "14. Buzzers (Alarmas)"
 
 class ComandoRemoto(models.Model):
     id_comando = models.BigAutoField(primary_key=True)
@@ -217,6 +245,8 @@ class ComandoRemoto(models.Model):
 
     class Meta:
         db_table = 'comando_remoto'
+        verbose_name = "Comando Remoto"
+        verbose_name_plural = "15. Comandos Enviados"
 
 class AuditoriaSistema(models.Model):
     id_auditoria = models.BigAutoField(primary_key=True)
@@ -230,6 +260,8 @@ class AuditoriaSistema(models.Model):
 
     class Meta:
         db_table = 'auditoria_sistema'
+        verbose_name = "Auditoría"
+        verbose_name_plural = "16. Logs de Auditoría"
 
 class EstadoBuzzer(models.Model):
     id_estado_buzzer = models.BigAutoField(primary_key=True)
