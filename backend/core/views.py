@@ -5,6 +5,7 @@ from rest_framework.pagination import PageNumberPagination
 from .models import *
 from .serializers import *
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class StandardPagination(PageNumberPagination):
@@ -15,6 +16,7 @@ class StandardPagination(PageNumberPagination):
 
 class DashboardSummaryView(APIView):
     """Devuelve todos los datos del dashboard en una sola llamada."""
+    authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request):
@@ -113,4 +115,5 @@ class RespuestaComandoViewSet(viewsets.ModelViewSet):
 class AuditoriaSistemaViewSet(viewsets.ModelViewSet):
     queryset = AuditoriaSistema.objects.all().order_by('-fecha_hora')
     serializer_class = AuditoriaSistemaSerializer
+    authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
