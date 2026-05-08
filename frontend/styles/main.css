@@ -190,3 +190,16 @@ h4 { font-size: 1.1rem; font-weight: 500; }
     .mobile-only { display: flex !important; }
     .desktop-only { display: none !important; }
 }
+
+/* --- Read Only Role UI --- */
+body.role-readonly .page-header-actions,
+body.role-readonly button[id^="btn-add"],
+body.role-readonly .action-btn,
+body.role-readonly .btn-action,
+body.role-readonly td:last-child button {
+    display: none !important;
+}
+body.role-readonly a[data-route="/usuarios"],
+body.role-readonly a[data-route="/roles"] {
+    display: none !important;
+}

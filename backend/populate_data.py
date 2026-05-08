@@ -11,7 +11,8 @@ django.setup()
 
 from core.models import (
     ZonaMonitoreo, DispositivoIot, TipoVariable, Sensor, 
-    LecturaSensor, EstadoAmbiental, UmbralAlerta, Alerta, Buzzer
+    LecturaSensor, EstadoAmbiental, UmbralAlerta, Alerta, Buzzer,
+    Rol, UsuarioHasRol, Recurso
 )
 from django.contrib.auth import get_user_model
 
@@ -175,7 +176,22 @@ def populate():
                 fecha_generacion=lec.fecha_hora
             )
 
-    print("Population complete!")
+    print("Data population completed successfully!")
 
-if __name__ == "__main__":
+    # 6. Roles y Usuarios
+    print("Configurando roles por defecto...")
+    admin_rol, _ = Rol.objects.get_or_create(nombre='Administrador', defaults={'estado': 1})
+    user_rol, _ = Rol.objects.get_or_create(nombre='Usuario Normal', defaults={'estado': 1})
+
+    try:
+        admin_user = User.objects.get(username='admin')
+        UsuarioHasRol.objects.get_or_create(
+            usuario_idusuarios=admin_user,
+            rol_idrol=admin_rol
+        )
+    except User.DoesNotExist:
+        pass
+    print("Roles configurados correctamente.")
+
+if __name__ == '__main__':
     populate()

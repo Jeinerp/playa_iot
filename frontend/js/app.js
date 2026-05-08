@@ -54,6 +54,13 @@ function ensureAppLayout() {
     bindSidebarEvents();
     bindHeaderEvents();
     layoutMounted = true;
+    
+    // Add role-based body class for UI restrictions
+    if (auth.getRoleName() !== 'Administrador') {
+        document.body.classList.add('role-readonly');
+    } else {
+        document.body.classList.remove('role-readonly');
+    }
 }
 
 function updateHeader(route) {
