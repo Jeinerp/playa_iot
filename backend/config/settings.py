@@ -26,12 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-v1k-gcbg)ft5yasxn=igshx9n=5*b!+3c7*^oqkr+15gm6ug1&'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # Permitir el dominio de Railway y localhost
 ALLOWED_HOSTS = ['*'] # En producción puedes ser más específico
 CSRF_TRUSTED_ORIGINS = [
-    'https://playa-iot-production.up.railway.app',
+    'https://playaiot-production.up.railway.app', # Sin el guion medio
     'https://confident-insight-production.up.railway.app'
 ]
 
