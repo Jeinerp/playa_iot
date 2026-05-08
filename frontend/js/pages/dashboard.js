@@ -89,19 +89,14 @@ export function renderDashboard() {
 
 async function loadDashboardData(content) {
     try {
-        const [dispositivos, sensores, alertas, lecturas, zonas] = await Promise.all([
-            api.get('/dispositivos/'),
-            api.get('/sensores/'),
-            api.get('/alertas/?limit=20'),
-            api.get('/lecturas/?limit=20'),
-            api.get('/zonas/')
-        ]);
+        // Una sola llamada en vez de 5 separadas
+        const summary = await api.get('/dashboard-summary/');
 
-        const dispArr = Array.isArray(dispositivos) ? dispositivos : dispositivos?.results || [];
-        const sensArr = Array.isArray(sensores) ? sensores : sensores?.results || [];
-        const alertArr = Array.isArray(alertas) ? alertas : alertas?.results || [];
-        const lectArr = Array.isArray(lecturas) ? lecturas : lecturas?.results || [];
-        const zonArr = Array.isArray(zonas) ? zonas : zonas?.results || [];
+        const dispArr = summary.dispositivos || [];
+        const sensArr = summary.sensores || [];
+        const alertArr = summary.alertas || [];
+        const lectArr = summary.lecturas || [];
+        const zonArr = summary.zonas || [];
 
         const activos = dispArr.filter(d => d.estado === 'ACTIVO').length;
         const pendientes = alertArr.filter(a => a.estado === 'PENDIENTE').length;

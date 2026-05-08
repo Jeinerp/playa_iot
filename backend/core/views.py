@@ -1,7 +1,34 @@
 from rest_framework import viewsets
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from .models import *
 from .serializers import *
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+
+class StandardPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
+class DashboardSummaryView(APIView):
+    """Devuelve todos los datos del dashboard en una sola llamada."""
+    def get(self, request):
+        dispositivos = DispositivoIot.objects.all()
+        sensores = Sensor.objects.all()
+        alertas = Alerta.objects.all().order_by('-fecha_generacion')[:20]
+        lecturas = LecturaSensor.objects.all().order_by('-fecha_hora')[:20]
+        zonas = ZonaMonitoreo.objects.all()
+
+        return Response({
+            'dispositivos': DispositivoIotSerializer(dispositivos, many=True).data,
+            'sensores': SensorSerializer(sensores, many=True).data,
+            'alertas': AlertaSerializer(alertas, many=True).data,
+            'lecturas': LecturaSensorSerializer(lecturas, many=True).data,
+            'zonas': ZonaMonitoreoSerializer(zonas, many=True).data,
+        })
 # ==========================================
 # 1. VISTAS DE AUTENTICACIÓN (image_6caa5a.png)
 # ==========================================
@@ -54,6 +81,7 @@ class SensorViewSet(viewsets.ModelViewSet):
 class LecturaSensorViewSet(viewsets.ModelViewSet):
     queryset = LecturaSensor.objects.all().order_by('-fecha_hora')
     serializer_class = LecturaSensorSerializer
+    pagination_class = StandardPagination
 
 class EstadoAmbientalViewSet(viewsets.ModelViewSet):
     queryset = EstadoAmbiental.objects.all()
@@ -66,6 +94,7 @@ class UmbralAlertaViewSet(viewsets.ModelViewSet):
 class AlertaViewSet(viewsets.ModelViewSet):
     queryset = Alerta.objects.all().order_by('-fecha_generacion')
     serializer_class = AlertaSerializer
+    pagination_class = StandardPagination
 
 class BuzzerViewSet(viewsets.ModelViewSet):
     queryset = Buzzer.objects.all()
