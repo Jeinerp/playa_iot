@@ -183,13 +183,10 @@ function renderGauges(content, lecturas) {
     const gaugeGrid = content.querySelector('#gauge-grid');
     if (!gaugeGrid) return;
 
-    // Group lecturas by variable type name (need to resolve from data)
+    // Group lecturas by variable type name (using the field from the serializer)
     const varGroups = {};
     lecturas.forEach(l => {
-        // Try to find variable name from nested data or direct field
-        const varName = l.id_tipo_variable_detail?.nombre ||
-                        l.tipo_variable_nombre ||
-                        resolveVarName(l.id_tipo_variable);
+        const varName = l.variable_nombre || resolveVarName(l.id_tipo_variable);
         if (!varGroups[varName]) varGroups[varName] = [];
         varGroups[varName].push(l);
     });
@@ -269,7 +266,7 @@ function renderTrendCharts(content, lecturas) {
 
     const varGroups = {};
     lecturas.forEach(l => {
-        const varName = resolveVarName(l.id_tipo_variable);
+        const varName = l.variable_nombre || resolveVarName(l.id_tipo_variable);
         if (!varGroups[varName]) varGroups[varName] = [];
         varGroups[varName].push(l);
     });
