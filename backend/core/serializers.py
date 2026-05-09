@@ -4,29 +4,48 @@ from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from .models import UsuarioHasRol, RecursoHasRol
 # ==========================================
 # 1. SERIALIZERS DE AUTENTICACIÓN (image_6caa5a.png)
 # ==========================================
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-        # Aquí agregamos los datos que Angular necesita
+        user = self.user
+
+        # 1. Información básica del usuario
         data['user'] = {
-            'username': self.user.username,
-            'email': self.user.email,
-            'nombre': self.user.first_name or self.user.username,
+            'id': user.idusuarios,
+            'username': user.username,
+            'nombre': f"{user.nombre} {user.apellido}",
         }
-        # Enviamos roles y recursos (aunque sea un superuser, enviamos arrays vacíos o sus permisos)
-        data['roles'] = [{'nombre': 'Superadministrador'}] if self.user.is_superuser else []
-        data['recursos'] = [
-            {'id': 1, 'nombre': 'Dashboard', 'path': '/dashboard', 'icono': 'layout-dashboard', 'orden': 1},
-            {'id': 2, 'nombre': 'Dispositivos', 'path': '/dispositivos', 'icono': 'cpu', 'orden': 2},
-            {'id': 3, 'nombre': 'Zonas', 'path': '/zonas', 'icono': 'map', 'orden': 3},
-            {'id': 4, 'nombre': 'Sensores', 'path': '/sensores', 'icono': 'thermometer', 'orden': 4},
-            {'id': 5, 'nombre': 'Lecturas', 'path': '/lecturas', 'icono': 'database', 'orden': 5},
-            {'id': 6, 'nombre': 'Alertas', 'path': '/alertas', 'icono': 'alert-triangle', 'orden': 6},
-            {'id': 7, 'nombre': 'Roles', 'path': '/roles', 'icono': 'shield', 'orden': 7}
-        ] # Menú oficial
+
+        # 2. Obtener los Roles reales desde la base de datos
+        # Buscamos en la tabla intermedia que corriges en el Admin
+        user_roles = UsuarioHasRol.objects.filter(usuario_idusuarios=user)
+        data['roles'] = [{'id': ur.rol_idrol.idrol, 'nombre': ur.rol_idrol.nombre} for ur in user_roles]
+
+        # 3. Obtener los Recursos (Menú) dinámicamente
+        # Buscamos los recursos asociados a los roles que tiene el usuario
+        roles_ids = [ur.rol_idrol.idrol for ur in user_roles]
+        recursos_asignados = RecursoHasRol.objects.filter(rol_idrol__in=roles_ids).select_related('recurso_idrecursos')
+
+        # Formateamos para Angular (eliminando duplicados si tiene varios roles)
+        menu = {}
+        for ra in recursos_asignados:
+            rec = ra.recurso_idrecursos
+            if rec.idRecursos not in menu:
+                menu[rec.idRecursos] = {
+                    'id': rec.idRecursos,
+                    'nombre': rec.nombre,
+                    'path': rec.path,
+                    'icono': rec.icono,
+                    'orden': rec.orden
+                }
+
+        # Ordenar el menú y enviarlo
+        data['recursos'] = sorted(menu.values(), key=lambda x: x['orden'])
+        
         return data
 class UsuarioSerializer(serializers.ModelSerializer):
     # Campo virtual para recibir el rol desde el formulario
