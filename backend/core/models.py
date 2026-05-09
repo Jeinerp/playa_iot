@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.contrib.auth import get_user_model
 
 class Usuario(models.Model):
     idusuarios = models.AutoField(primary_key=True)
@@ -48,29 +49,22 @@ class Recurso(models.Model):
         verbose_name = "Recurso"
         verbose_name_plural = "03. Recursos (URLs)"
 
-class UsuarioHasRol(models.Model):
-    # CAMBIO CLAVE: Ahora apunta a settings.AUTH_USER_MODEL (la tabla de arriba en el admin)
-    usuario_idusuarios = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.CASCADE, 
-        db_column='usuario_idusuarios'
+class UsuarioHasRolSerializer(serializers.ModelSerializer):
+    # 'usuario' recibirá el ID y lo guardará en 'usuario_idusuarios'
+    usuario = serializers.PrimaryKeyRelatedField(
+        source='usuario_idusuarios', 
+        queryset=get_user_model().objects.all()
     )
-    rol_idrol = models.ForeignKey(
-        'Rol', 
-        on_delete=models.CASCADE, 
-        db_column='rol_idrol'
+    # 'rol' recibirá el ID y lo guardará en 'rol_idrol'
+    rol = serializers.PrimaryKeyRelatedField(
+        source='rol_idrol', 
+        queryset=Rol.objects.all()
     )
-
-    def __str__(self):
-        # Usamos .username porque es un campo estándar del modelo oficial
-        return f"{self.usuario_idusuarios.username} - {self.rol_idrol.nombre}"
 
     class Meta:
-        db_table = 'usuario_has_rol'
-        verbose_name = "Asignación de Rol"
-        verbose_name_plural = "04. Usuarios con Roles"
-        unique_together = (('usuario_idusuarios', 'rol_idrol'),)
-
+        model = UsuarioHasRol
+        fields = ['id', 'usuario', 'rol']
+        
 class RecursoHasRol(models.Model):
     recurso_idrecursos = models.ForeignKey(Recurso, on_delete=models.CASCADE, db_column='recurso_idrecursos')
     rol_idrol = models.ForeignKey(Rol, on_delete=models.CASCADE, db_column='rol_idrol')
