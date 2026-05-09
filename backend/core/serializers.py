@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import *
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import get_user_model
 # ==========================================
 # 1. SERIALIZERS DE AUTENTICACIÓN (image_6caa5a.png)
 # ==========================================
@@ -52,10 +53,23 @@ class RecursoSerializer(serializers.ModelSerializer):
         model = Recurso
         fields = '__all__'
 
+from django.contrib.auth import get_user_model
+
 class UsuarioHasRolSerializer(serializers.ModelSerializer):
+    # 'usuario' recibirá el ID y lo guardará en 'usuario_idusuarios'
+    usuario = serializers.PrimaryKeyRelatedField(
+        source='usuario_idusuarios', 
+        queryset=get_user_model().objects.all()
+    )
+    # 'rol' recibirá el ID y lo guardará en 'rol_idrol'
+    rol = serializers.PrimaryKeyRelatedField(
+        source='rol_idrol', 
+        queryset=Rol.objects.all()
+    )
+
     class Meta:
         model = UsuarioHasRol
-        fields = '__all__'
+        fields = ['id', 'usuario', 'rol'] # Solo usamos estos nombres limpios
 
 class RecursoHasRolSerializer(serializers.ModelSerializer):
     class Meta:
