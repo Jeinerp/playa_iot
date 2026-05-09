@@ -51,21 +51,28 @@ class Recurso(models.Model):
 
 
 class UsuarioHasRol(models.Model):
+
+    # CAMBIO: Quita settings.AUTH_USER_MODEL y pon 'Usuario'
+
     usuario_idusuarios = models.ForeignKey(
-        'Usuario', 
+
+        'Usuario',  # <--- Apunta a tu tabla de la sección 01
+
         on_delete=models.CASCADE, 
+
         db_column='usuario_idusuarios'
-    )
-    rol_idrol = models.ForeignKey(
-        'Rol', 
-        on_delete=models.CASCADE, 
-        db_column='rol_idrol'
+
     )
 
-    class Meta:
-        db_table = 'usuario_has_rol'  # <-- ESTO ES VITAL
-        verbose_name = "Asignación de Rol"
-        unique_together = (('usuario_idusuarios', 'rol_idrol'),)
+    rol_idrol = models.ForeignKey(
+
+        'Rol', 
+
+        on_delete=models.CASCADE, 
+
+        db_column='rol_idrol'
+
+    )
         
 class RecursoHasRol(models.Model):
     recurso_idrecursos = models.ForeignKey(Recurso, on_delete=models.CASCADE, db_column='recurso_idrecursos')
