@@ -1,170 +1,137 @@
 from rest_framework import serializers
-
 from .models import *
-
 from django.contrib.auth.models import User
-
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 # ==========================================
 # 1. SERIALIZERS DE AUTENTICACIÓN (image_6caa5a.png)
 # ==========================================
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        user = self.user
-
-        # 1. Información básica del usuario
-        data['user'] = {
-            'id': user.idusuarios,
-            'username': user.username,
-            'nombre': f"{user.nombre} {user.apellido}",
-        }
-
-        # 2. Obtener los Roles reales desde la base de datos
-        # Buscamos en la tabla intermedia que corriges en el Admin
-        user_roles = UsuarioHasRol.objects.filter(usuario_idusuarios=user)
-        data['roles'] = [{'id': ur.rol_idrol.idrol, 'nombre': ur.rol_idrol.nombre} for ur in user_roles]
-
-        # 3. Obtener los Recursos (Menú) dinámicamente
-        # Buscamos los recursos asociados a los roles que tiene el usuario
-        roles_ids = [ur.rol_idrol.idrol for ur in user_roles]
-        recursos_asignados = RecursoHasRol.objects.filter(rol_idrol__in=roles_ids).select_related('recurso_idrecursos')
-
-        # Formateamos para Angular (eliminando duplicados si tiene varios roles)
-        menu = {}
-        for ra in recursos_asignados:
-            rec = ra.recurso_idrecursos
-            if rec.idRecursos not in menu:
-                menu[rec.idRecursos] = {
-                    'id': rec.idRecursos,
-                    'nombre': rec.nombre,
-                    'path': rec.path,
-                    'icono': rec.icono,
-                    'orden': rec.orden
-                }
-
-        # Ordenar el menú y enviarlo
-        data['recursos'] = sorted(menu.values(), key=lambda x: x['orden'])
-        
-        return data
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Aquí agregamos los datos que Angular necesita
+        data['user'] = {
+            'username': self.user.username,
+            'email': self.user.email,
+            'nombre': self.user.first_name or self.user.username,
+        }
+        # Enviamos roles y recursos (aunque sea un superuser, enviamos arrays vacíos o sus permisos)
+        data['roles'] = [{'nombre': 'Superadministrador'}] if self.user.is_superuser else []
+        data['recursos'] = [
+            {'id': 1, 'nombre': 'Dashboard', 'path': '/dashboard', 'icono': 'layout-dashboard', 'orden': 1},
+            {'id': 2, 'nombre': 'Dispositivos', 'path': '/dispositivos', 'icono': 'cpu', 'orden': 2},
+            {'id': 3, 'nombre': 'Zonas', 'path': '/zonas', 'icono': 'map', 'orden': 3},
+            {'id': 4, 'nombre': 'Sensores', 'path': '/sensores', 'icono': 'thermometer', 'orden': 4},
+            {'id': 5, 'nombre': 'Lecturas', 'path': '/lecturas', 'icono': 'database', 'orden': 5},
+            {'id': 6, 'nombre': 'Alertas', 'path': '/alertas', 'icono': 'alert-triangle', 'orden': 6},
+            {'id': 7, 'nombre': 'Roles', 'path': '/roles', 'icono': 'shield', 'orden': 7}
+        ] # Menú oficial
+        return data
 class UsuarioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuario
-        fields = ['id', 'first_name', 'last_name', 'username', 'password']
-        extra_kwargs = {'password': {'write_only': True}} # La contraseña no se muestra al consultar
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'username', 'password']
+        extra_kwargs = {'password': {'write_only': True}} # La contraseña no se muestra al consultar
 
-    def create(self, validated_data):
-        # Esta línea es la que cifra la contraseña antes de guardarla en la DB
-        user = User.objects.create_user(**validated_data)
-        return user
-    
+    def create(self, validated_data):
+        # Esta línea es la que cifra la contraseña antes de guardarla en la DB
+        user = User.objects.create_user(**validated_data)
+        return user
+    
 class UsuarioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuario
-        fields = ['idusuarios', 'nombre', 'apellido', 'username','password'] # No incluimos password por seguridad
+    class Meta:
+        model = Usuario
+        fields = ['idusuarios', 'nombre', 'apellido', 'username','password'] # No incluimos password por seguridad
+
 class RolSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Rol
-        fields = '__all__'
+    class Meta:
+        model = Rol
+        fields = '__all__'
 
 class RecursoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Recurso
-        fields = '__all__'
-
-from django.contrib.auth import get_user_model
+    class Meta:
+        model = Recurso
+        fields = '__all__'
 
 class UsuarioHasRolSerializer(serializers.ModelSerializer):
-    # 'usuario' recibirá el ID y lo guardará en 'usuario_idusuarios'
-    usuario = serializers.PrimaryKeyRelatedField(
-        source='usuario_idusuarios', 
-        queryset=get_user_model().objects.all()
-    )
-    # 'rol' recibirá el ID y lo guardará en 'rol_idrol'
-    rol = serializers.PrimaryKeyRelatedField(
-        source='rol_idrol', 
-        queryset=Rol.objects.all()
-    )
-
-    class Meta:
-        model = UsuarioHasRol
-        fields = ['id', 'usuario', 'rol'] # Solo usamos estos nombres limpios
+    class Meta:
+        model = UsuarioHasRol
+        fields = '__all__'
 
 class RecursoHasRolSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RecursoHasRol
-        fields = '__all__'
+    class Meta:
+        model = RecursoHasRol
+        fields = '__all__'
 
 # ==========================================
 # 2. SERIALIZERS IOT (jeiner_playa_2.png)
 # ==========================================
 
 class ZonaMonitoreoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ZonaMonitoreo
-        fields = '__all__'
+    class Meta:
+        model = ZonaMonitoreo
+        fields = '__all__'
 
 class DispositivoIotSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DispositivoIot
-        fields = '__all__'
+    class Meta:
+        model = DispositivoIot
+        fields = '__all__'
 
 class TipoVariableSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TipoVariable
-        fields = '__all__'
+    class Meta:
+        model = TipoVariable
+        fields = '__all__'
 
 class SensorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Sensor
-        fields = '__all__'
+    class Meta:
+        model = Sensor
+        fields = '__all__'
 
 class LecturaSensorSerializer(serializers.ModelSerializer):
-    # Campos de solo lectura para facilitar la visualización en el Frontend
-    sensor_nombre = serializers.ReadOnlyField(source='id_sensor.nombre')
-    variable_nombre = serializers.ReadOnlyField(source='id_tipo_variable.nombre')
-    unidad = serializers.ReadOnlyField(source='id_tipo_variable.unidad_medida')
+    # Campos de solo lectura para facilitar la visualización en el Frontend
+    sensor_nombre = serializers.ReadOnlyField(source='id_sensor.nombre')
+    variable_nombre = serializers.ReadOnlyField(source='id_tipo_variable.nombre')
+    unidad = serializers.ReadOnlyField(source='id_tipo_variable.unidad_medida')
 
-    class Meta:
-        model = LecturaSensor
-        fields = '__all__'
+    class Meta:
+        model = LecturaSensor
+        fields = '__all__'
 
 class EstadoAmbientalSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EstadoAmbiental
-        fields = '__all__'
+    class Meta:
+        model = EstadoAmbiental
+        fields = '__all__'
 
 class UmbralAlertaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UmbralAlerta
-        fields = '__all__'
+    class Meta:
+        model = UmbralAlerta
+        fields = '__all__'
 
 class AlertaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Alerta
-        fields = '__all__'
+    class Meta:
+        model = Alerta
+        fields = '__all__'
 
 class BuzzerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Buzzer
-        fields = '__all__'
+    class Meta:
+        model = Buzzer
+        fields = '__all__'
 
 class EstadoBuzzerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EstadoBuzzer
-        fields = '__all__'
+    class Meta:
+        model = EstadoBuzzer
+        fields = '__all__'
 
 class ComandoRemotoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ComandoRemoto
-        fields = '__all__'
+    class Meta:
+        model = ComandoRemoto
+        fields = '__all__'
 
 class RespuestaComandoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RespuestaComando
-        fields = '__all__'
+    class Meta:
+        model = RespuestaComando
+        fields = '__all__'
 
 class AuditoriaSistemaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AuditoriaSistema
-        fields = '__all__'
+    class Meta:
+        model = AuditoriaSistema
+        fields = '__all__'
