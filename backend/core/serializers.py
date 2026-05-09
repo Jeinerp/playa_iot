@@ -28,7 +28,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = usuario
         fields = ['id', 'first_name', 'last_name', 'username', 'password']
         extra_kwargs = {'password': {'write_only': True}} # La contraseña no se muestra al consultar
 
