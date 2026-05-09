@@ -49,49 +49,19 @@ class Recurso(models.Model):
         verbose_name = "Recurso"
         verbose_name_plural = "03. Recursos (URLs)"
 
+
 class UsuarioHasRol(models.Model):
-
-    # CAMBIO CLAVE: Ahora apunta a settings.AUTH_USER_MODEL (la tabla de arriba en el admin)
-
+    # CAMBIO: Quita settings.AUTH_USER_MODEL y pon 'Usuario'
     usuario_idusuarios = models.ForeignKey(
-
-        settings.AUTH_USER_MODEL, 
-
+        'Usuario',  # <--- Apunta a tu tabla de la sección 01
         on_delete=models.CASCADE, 
-
         db_column='usuario_idusuarios'
-
     )
-
     rol_idrol = models.ForeignKey(
-
         'Rol', 
-
         on_delete=models.CASCADE, 
-
         db_column='rol_idrol'
-
     )
-
-
-
-    def __str__(self):
-
-        # Usamos .username porque es un campo estándar del modelo oficial
-
-        return f"{self.usuario_idusuarios.username} - {self.rol_idrol.nombre}"
-
-
-
-    class Meta:
-
-        db_table = 'usuario_has_rol'
-
-        verbose_name = "Asignación de Rol"
-
-        verbose_name_plural = "04. Usuarios con Roles"
-
-        unique_together = (('usuario_idusuarios', 'rol_idrol'),)
         
 class RecursoHasRol(models.Model):
     recurso_idrecursos = models.ForeignKey(Recurso, on_delete=models.CASCADE, db_column='recurso_idrecursos')
