@@ -1,10 +1,10 @@
 from rest_framework import serializers
+
 from .models import *
+
 from django.contrib.auth.models import User
+
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from .models import UsuarioHasRol, RecursoHasRol
 # ==========================================
 # 1. SERIALIZERS DE AUTENTICACIÓN (image_6caa5a.png)
 # ==========================================
