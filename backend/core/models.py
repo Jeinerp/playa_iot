@@ -17,7 +17,7 @@ class Usuario(models.Model):
         verbose_name_plural = "01. Usuarios del Sistema"
 
 class Rol(models.Model):
-    idrol = models.AutoField(primary_key=True)
+    idrol=models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=45)
     estado = models.SmallIntegerField(default=1)
 
@@ -30,7 +30,7 @@ class Rol(models.Model):
         verbose_name_plural = "02. Roles"
 
 class Recurso(models.Model):
-    idRecursos = models.AutoField(primary_key=True)
+    idRecursos=models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=45)
     url_backend = models.CharField(max_length=45, blank=True, null=True)
     url_frontend = models.CharField(max_length=45, blank=True, null=True)
@@ -49,8 +49,8 @@ class Recurso(models.Model):
         verbose_name_plural = "03. Recursos (URLs)"
 
 class UsuarioHasRol(models.Model):
-    # CAMBIO CLAVE: Ahora apunta a settings.AUTH_USER_MODEL (la tabla de arriba en el admin)
-    usuario_idusuarios = models.ForeignKey(
+    # CAMBIO CLAVE: Ahora apunta a settings.AUTH_USER_MODEL (la tabla de arriba en el admin
+    usuario_idusuarios=models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         db_column='usuario_idusuarios'
