@@ -3,6 +3,7 @@ from .models import *
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
+from django.db import transaction
 # ==========================================
 # 1. SERIALIZERS DE AUTENTICACIÓN (image_6caa5a.png)
 # ==========================================
@@ -28,20 +29,30 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         ] # Menú oficial
         return data
 class UsuarioSerializer(serializers.ModelSerializer):
+    # Campo virtual para recibir el rol desde el formulario
+    id_rol = serializers.IntegerField(write_only=True, required=False)
+
     class Meta:
         model = Usuario
-        fields = ['id', 'first_name', 'last_name', 'username', 'password']
-        extra_kwargs = {'password': {'write_only': True}} # La contraseña no se muestra al consultar
+        fields = ['idusuarios', 'nombre', 'apellido', 'username', 'password', 'id_rol']
+        extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
-        # Esta línea es la que cifra la contraseña antes de guardarla en la DB
-        user = User.objects.create_user(**validated_data)
-        return user
-    
-class UsuarioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuario
-        fields = ['idusuarios', 'nombre', 'apellido', 'username','password'] # No incluimos password por seguridad
+        # Extraemos el ID del rol
+        id_rol = validated_data.pop('id_rol', None)
+        
+        with transaction.atomic():
+            # 1. Crear el usuario
+            usuario = Usuario.objects.create(**validated_data)
+            
+            # 2. Si el administrador seleccionó una función, asignarla
+            if id_rol:
+                rol = Rol.objects.get(pk=id_rol)
+                UsuarioHasRol.objects.create(
+                    usuario_idusuarios=usuario,
+                    rol_idrol=rol
+                )
+        return usuario
 
 class RolSerializer(serializers.ModelSerializer):
     class Meta:
