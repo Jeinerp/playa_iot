@@ -5,8 +5,7 @@
 
 import { api } from '../api.js';
 import { createLineChart, createBarChart, createDoughnutChart } from '../components/charts.js';
-
-let charts = [];
+let charts = {};
 
 // Variable type configuration — colors, icons, units, ranges
 const VAR_CONFIG = {
@@ -22,17 +21,17 @@ const VAR_CONFIG = {
         min: 0, max: 100, normalMax: 70, warningMax: 85,
         description: 'Relativa'
     },
-    'Nivel de Agua': {
-        icon: 'waves', unit: 'm', color: '#06b6d4',
-        glow: 'rgba(6, 182, 212, 0.25)', gradient: ['#06b6d4', '#0891b2'],
-        min: 0, max: 5, normalMax: 2.5, warningMax: 4,
-        description: 'Marea'
-    },
     'Calidad del Aire': {
         icon: 'wind', unit: 'AQI', color: '#8b5cf6',
         glow: 'rgba(139, 92, 246, 0.25)', gradient: ['#8b5cf6', '#a78bfa'],
         min: 0, max: 100, normalMax: 50, warningMax: 75,
         description: 'Índice'
+    },
+    'Radiacion UV': {
+        icon: 'sun', unit: 'UV', color: '#f59e0b',
+        glow: 'rgba(245, 158, 11, 0.25)', gradient: ['#f59e0b', '#ef4444'],
+        min: 0, max: 1000, normalMax: 300, warningMax: 600,
+        description: 'Radiación'
     },
 };
 
@@ -41,6 +40,17 @@ export function renderDashboard() {
     if (!content) return;
 
     content.innerHTML = `
+        <style>
+            @keyframes flashUpdate {
+                0% { color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.8); transform: scale(1.05); }
+                50% { color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.8); transform: scale(1.05); }
+                100% { color: inherit; text-shadow: none; transform: scale(1); }
+            }
+            .flash-value {
+                display: inline-block;
+                animation: flashUpdate 0.8s ease-in-out;
+            }
+        </style>
         <!-- Hero Banner -->
         <div class="dash-hero">
             <div class="dash-hero-bg">
@@ -75,7 +85,7 @@ export function renderDashboard() {
 
         <!-- Animated Gauge Cards — One per variable type -->
         <div class="gauge-grid" id="gauge-grid">
-            ${[1,2,3,4].map(() => `
+            ${Object.keys(VAR_CONFIG).map(() => `
                 <div class="gauge-card">
                     <div class="skeleton skeleton-card" style="width:140px;height:140px;border-radius:50%;"></div>
                     <div class="skeleton skeleton-text" style="width:120px;"></div>
@@ -123,9 +133,17 @@ export function renderDashboard() {
     if (window.lucide) lucide.createIcons();
     loadDashboardData(content);
 
+    // Configurar sondeo en tiempo real cada 1 segundo (más rápido)
+    const intervalId = setInterval(() => {
+        loadDashboardData(content);
+    }, 1000);
+
     return () => {
-        charts.forEach(c => c.destroy());
-        charts = [];
+        clearInterval(intervalId);
+        Object.values(charts).forEach(c => {
+            try { c.destroy(); } catch (e) {}
+        });
+        charts = {};
     };
 }
 
@@ -145,7 +163,7 @@ async function loadDashboardData(content) {
         // HERO STATS
         // ====================================
         const fechaEl = content.querySelector('#hs-fecha');
-        if (fechaEl) fechaEl.textContent = new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+        if (fechaEl) fechaEl.textContent = new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'medium' });
         const estEl = content.querySelector('#hs-estaciones');
         if (estEl) estEl.textContent = `${activos} / ${dispArr.length}`;
         const zonEl = content.querySelector('#hs-zonas');
@@ -177,13 +195,13 @@ async function loadDashboardData(content) {
 }
 
 // ======================================================
-// GAUGE RENDERING — Animated circular progress gauges
+// GAUGE RENDERING — Animated circular progress gauges (Smart Update)
 // ======================================================
 function renderGauges(content, lecturas) {
     const gaugeGrid = content.querySelector('#gauge-grid');
     if (!gaugeGrid) return;
 
-    // Group lecturas by variable type name (using the field from the serializer)
+    // Group lecturas by variable type name
     const varGroups = {};
     lecturas.forEach(l => {
         const varName = l.variable_nombre || resolveVarName(l.id_tipo_variable);
@@ -191,74 +209,136 @@ function renderGauges(content, lecturas) {
         varGroups[varName].push(l);
     });
 
-    // Build gauge cards HTML
     const gaugeNames = Object.keys(VAR_CONFIG);
-    gaugeGrid.innerHTML = gaugeNames.map((name, idx) => {
-        const config = VAR_CONFIG[name];
-        const readings = varGroups[name] || [];
-        const latestVal = readings.length > 0 ? parseFloat(readings[0].valor) : 0;
-        const avg = readings.length > 0
-            ? (readings.reduce((s, r) => s + parseFloat(r.valor), 0) / readings.length).toFixed(1)
-            : '—';
+    const isAlreadyRendered = !!gaugeGrid.querySelector('.gauge-card[data-gauge]');
 
-        // Calculate percentage for gauge fill
-        const pct = Math.min(Math.max(((latestVal - config.min) / (config.max - config.min)) * 100, 0), 100);
-        const circumference = 2 * Math.PI * 60; // r=60
-        const offset = circumference - (pct / 100) * circumference;
+    if (isAlreadyRendered) {
+        // SMART UPDATE (No flash, updates DOM values directly)
+        gaugeNames.forEach(name => {
+            const card = gaugeGrid.querySelector(`.gauge-card[data-gauge="${name}"]`);
+            if (!card) return;
 
-        // Determine status
-        let statusClass = 'normal', statusText = 'Normal';
-        if (latestVal > config.warningMax) { statusClass = 'danger'; statusText = 'Crítico'; }
-        else if (latestVal > config.normalMax) { statusClass = 'warning'; statusText = 'Precaución'; }
+            const config = VAR_CONFIG[name];
+            const readings = varGroups[name] || [];
+            const latestVal = readings.length > 0 ? parseFloat(readings[0].valor) : null;
+            const avg = readings.length > 0
+                ? (readings.reduce((s, r) => s + parseFloat(r.valor), 0) / readings.length).toFixed(1)
+                : '—';
 
-        return `
-            <div class="gauge-card" style="--gauge-color:${config.color};--gauge-glow:${config.glow};animation-delay:${idx * 0.1}s;">
-                <div class="gauge-ring">
-                    <svg viewBox="0 0 128 128">
-                        <circle class="gauge-bg" cx="64" cy="64" r="60" />
-                        <circle class="gauge-fill" cx="64" cy="64" r="60"
-                            style="stroke-dasharray:${circumference};stroke-dashoffset:${circumference};"
-                            data-target-offset="${offset}" />
-                    </svg>
-                    <div class="gauge-center">
-                        <span class="gauge-value">${readings.length > 0 ? latestVal.toFixed(1) : '—'}</span>
-                        <span class="gauge-unit">${config.unit}</span>
+            // Value text (with a smooth flash animation if it changes)
+            const valEl = card.querySelector('.gauge-value');
+            if (valEl) {
+                const prevText = valEl.textContent;
+                const newText = latestVal !== null ? latestVal.toFixed(1) : '—';
+                if (prevText !== newText && prevText !== '—' && newText !== '—') {
+                    valEl.classList.remove('flash-value');
+                    void valEl.offsetWidth; // Trigger reflow to restart animation
+                    valEl.classList.add('flash-value');
+                }
+                valEl.textContent = newText;
+            }
+
+            // Average sublabel
+            const sublabelEl = card.querySelector('.gauge-sublabel');
+            if (sublabelEl) sublabelEl.textContent = `${config.description} · Prom: ${avg} ${config.unit}`;
+
+            // Gauge circle offset
+            const latestValNum = latestVal !== null ? latestVal : 0;
+            const pct = Math.min(Math.max(((latestValNum - config.min) / (config.max - config.min)) * 100, 0), 100);
+            const circumference = 2 * Math.PI * 60; // r=60
+            const offset = circumference - (pct / 100) * circumference;
+            const fillCircle = card.querySelector('.gauge-fill');
+            if (fillCircle) {
+                fillCircle.style.strokeDashoffset = offset;
+            }
+
+            // Status indicator
+            let statusClass = 'normal', statusText = 'Normal';
+            if (latestVal !== null) {
+                if (latestVal > config.warningMax) { statusClass = 'danger'; statusText = 'Crítico'; }
+                else if (latestVal > config.normalMax) { statusClass = 'warning'; statusText = 'Precaución'; }
+            } else {
+                statusText = 'Sin Datos';
+            }
+
+            const statusEl = card.querySelector('.gauge-status');
+            if (statusEl) {
+                statusEl.className = `gauge-status ${statusClass}`;
+                statusEl.innerHTML = `<span class="gauge-status-dot"></span>${statusText}`;
+            }
+        });
+    } else {
+        // FULL INITIAL RENDERING
+        gaugeGrid.innerHTML = gaugeNames.map((name, idx) => {
+            const config = VAR_CONFIG[name];
+            const readings = varGroups[name] || [];
+            const latestVal = readings.length > 0 ? parseFloat(readings[0].valor) : null;
+            const avg = readings.length > 0
+                ? (readings.reduce((s, r) => s + parseFloat(r.valor), 0) / readings.length).toFixed(1)
+                : '—';
+
+            const latestValNum = latestVal !== null ? latestVal : 0;
+            const pct = Math.min(Math.max(((latestValNum - config.min) / (config.max - config.min)) * 100, 0), 100);
+            const circumference = 2 * Math.PI * 60; // r=60
+            const offset = circumference - (pct / 100) * circumference;
+
+            let statusClass = 'normal', statusText = 'Normal';
+            if (latestVal !== null) {
+                if (latestVal > config.warningMax) { statusClass = 'danger'; statusText = 'Crítico'; }
+                else if (latestVal > config.normalMax) { statusClass = 'warning'; statusText = 'Precaución'; }
+            } else {
+                statusText = 'Sin Datos';
+            }
+
+            return `
+                <div class="gauge-card" data-gauge="${name}" style="--gauge-color:${config.color};--gauge-glow:${config.glow};animation-delay:${idx * 0.1}s;">
+                    <div class="gauge-ring">
+                        <svg viewBox="0 0 128 128">
+                            <circle class="gauge-bg" cx="64" cy="64" r="60" />
+                            <circle class="gauge-fill" cx="64" cy="64" r="60"
+                                style="stroke-dasharray:${circumference};stroke-dashoffset:${circumference};"
+                                data-target-offset="${offset}" />
+                        </svg>
+                        <div class="gauge-center">
+                            <span class="gauge-value">${latestVal !== null ? latestVal.toFixed(1) : '—'}</span>
+                            <span class="gauge-unit">${config.unit}</span>
+                        </div>
+                    </div>
+                    <div class="gauge-label">
+                        <i data-lucide="${config.icon}"></i>
+                        ${name}
+                    </div>
+                    <div class="gauge-sublabel">${config.description} · Prom: ${avg} ${config.unit}</div>
+                    <div class="gauge-status ${statusClass}">
+                        <span class="gauge-status-dot"></span>
+                        ${statusText}
                     </div>
                 </div>
-                <div class="gauge-label">
-                    <i data-lucide="${config.icon}"></i>
-                    ${name}
-                </div>
-                <div class="gauge-sublabel">${config.description} · Prom: ${avg} ${config.unit}</div>
-                <div class="gauge-status ${statusClass}">
-                    <span class="gauge-status-dot"></span>
-                    ${statusText}
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
 
-    if (window.lucide) lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
 
-    // Animate gauge fills after a short delay
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            gaugeGrid.querySelectorAll('.gauge-fill').forEach(circle => {
-                const targetOffset = circle.getAttribute('data-target-offset');
-                circle.style.strokeDashoffset = targetOffset;
-            });
-        }, 200);
-    });
+        // Animate gauge fills
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                gaugeGrid.querySelectorAll('.gauge-fill').forEach(circle => {
+                    const targetOffset = circle.getAttribute('data-target-offset');
+                    circle.style.strokeDashoffset = targetOffset;
+                });
+            }, 200);
+        });
+    }
 }
 
 // Helper: resolve variable name from ID (fallback)
 function resolveVarName(id) {
-    const map = { 1: 'Temperatura', 2: 'Humedad', 3: 'Nivel de Agua', 4: 'Calidad del Aire' };
+    const map = { 1: 'Temperatura', 2: 'Humedad', 4: 'Calidad del Aire', 5: 'Radiacion UV' };
     return map[id] || `Variable ${id}`;
 }
 
 // ======================================================
-// TREND CHARTS — One line chart per variable
+// TREND CHARTS — One line chart per variable (Smart Update)
 // ======================================================
 function renderTrendCharts(content, lecturas) {
     const container = content.querySelector('#trend-charts');
@@ -280,56 +360,86 @@ function renderTrendCharts(content, lecturas) {
         return;
     }
 
-    container.innerHTML = chartsWithData.map((name, idx) => {
-        const config = VAR_CONFIG[name];
-        const canvasId = `chart-trend-${name.replace(/\s+/g, '-').toLowerCase()}`;
-        return `
-            <div class="premium-chart-card" style="animation-delay:${0.2 + idx * 0.1}s;">
-                <div class="premium-chart-header">
-                    <div class="premium-chart-title">
-                        <div class="premium-chart-title-icon" style="background:linear-gradient(135deg,${config.gradient[0]},${config.gradient[1]});">
-                            <i data-lucide="${config.icon}"></i>
+    const isAlreadyRendered = !!container.querySelector('.premium-chart-card');
+
+    if (!isAlreadyRendered) {
+        // INITIAL CANVASES RENDER
+        container.innerHTML = chartsWithData.map((name, idx) => {
+            const config = VAR_CONFIG[name];
+            const canvasId = `chart-trend-${name.replace(/\s+/g, '-').toLowerCase()}`;
+            return `
+                <div class="premium-chart-card" data-trend="${name}" style="animation-delay:${0.2 + idx * 0.1}s;">
+                    <div class="premium-chart-header">
+                        <div class="premium-chart-title">
+                            <div class="premium-chart-title-icon" style="background:linear-gradient(135deg,${config.gradient[0]},${config.gradient[1]});">
+                                <i data-lucide="${config.icon}"></i>
+                            </div>
+                            <div>
+                                <h3>${name}</h3>
+                                <p>Tendencia de las últimas lecturas (${config.unit})</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3>${name}</h3>
-                            <p>Tendencia de las últimas lecturas (${config.unit})</p>
-                        </div>
+                        <span class="badge badge-info lectura-count-badge">${(varGroups[name] || []).length} datos</span>
                     </div>
-                    <span class="badge badge-info">${(varGroups[name] || []).length} datos</span>
+                    <div style="height:220px;"><canvas id="${canvasId}"></canvas></div>
                 </div>
-                <div style="height:220px;"><canvas id="${canvasId}"></canvas></div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
 
-    if (window.lucide) lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
 
-    // Create each chart
-    chartsWithData.forEach(name => {
-        const config = VAR_CONFIG[name];
-        const canvasId = `chart-trend-${name.replace(/\s+/g, '-').toLowerCase()}`;
-        const data = (varGroups[name] || []).slice(0, 20).reverse();
+        // Create Chart instances
+        chartsWithData.forEach(name => {
+            const config = VAR_CONFIG[name];
+            const canvasId = `chart-trend-${name.replace(/\s+/g, '-').toLowerCase()}`;
+            const data = (varGroups[name] || []).slice(0, 20).reverse();
 
-        const labels = data.map(l => {
-            if (l.fecha_hora) {
-                const d = new Date(l.fecha_hora);
-                return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
-            }
-            return '';
+            const labels = data.map(l => {
+                if (l.fecha_hora) {
+                    const d = new Date(l.fecha_hora);
+                    return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+                }
+                return '';
+            });
+
+            const chart = createLineChart(canvasId, labels, [{
+                label: `${name} (${config.unit})`,
+                data: data.map(l => parseFloat(l.valor)),
+                borderColor: config.color,
+                backgroundColor: config.glow,
+            }]);
+            if (chart) charts[name] = chart;
         });
+    } else {
+        // SMART UPDATE OF EXISTING CHARTS
+        chartsWithData.forEach(name => {
+            const data = (varGroups[name] || []).slice(0, 20).reverse();
+            const card = container.querySelector(`.premium-chart-card[data-trend="${name}"]`);
+            if (card) {
+                const badge = card.querySelector('.lectura-count-badge');
+                if (badge) badge.textContent = `${(varGroups[name] || []).length} datos`;
+            }
 
-        const chart = createLineChart(canvasId, labels, [{
-            label: `${name} (${config.unit})`,
-            data: data.map(l => parseFloat(l.valor)),
-            borderColor: config.color,
-            backgroundColor: config.glow,
-        }]);
-        if (chart) charts.push(chart);
-    });
+            const labels = data.map(l => {
+                if (l.fecha_hora) {
+                    const d = new Date(l.fecha_hora);
+                    return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+                }
+                return '';
+            });
+
+            const chart = charts[name];
+            if (chart) {
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = data.map(l => parseFloat(l.valor));
+                chart.update('none'); // Update smoothly in-place
+            }
+        });
+    }
 }
 
 // ======================================================
-// ALERT CHART
+// ALERT CHART (Smart Update)
 // ======================================================
 function renderAlertChart(content, alertArr) {
     const c3El = content.querySelector('#chart-alertas');
@@ -347,12 +457,20 @@ function renderAlertChart(content, alertArr) {
         k === 'RESUELTA' ? '#10b981' : '#8b5cf6'
     );
 
-    const c3 = createBarChart('chart-alertas', estadoLabels, [{
-        label: 'Alertas',
-        data: estadoValues,
-        backgroundColor: estadoColors,
-    }]);
-    if (c3) charts.push(c3);
+    const alertChart = charts['alertas'];
+    if (alertChart) {
+        alertChart.data.labels = estadoLabels;
+        alertChart.data.datasets[0].data = estadoValues;
+        alertChart.data.datasets[0].backgroundColor = estadoColors;
+        alertChart.update('none');
+    } else {
+        const c3 = createBarChart('chart-alertas', estadoLabels, [{
+            label: 'Alertas',
+            data: estadoValues,
+            backgroundColor: estadoColors,
+        }]);
+        if (c3) charts['alertas'] = c3;
+    }
 }
 
 // ======================================================
@@ -364,8 +482,9 @@ function renderRecentAlerts(content, alertArr) {
 
     const recentAlerts = alertArr.slice(0, 5);
     if (recentAlerts.length > 0) {
-        alertsContainer.innerHTML = recentAlerts.map((a, i) => `
-            <div class="alert-item" style="animation: fadeIn 0.3s ease ${i * 0.08}s both;">
+        // Overwrite simple list (very fast, no flash)
+        alertsContainer.innerHTML = recentAlerts.map((a) => `
+            <div class="alert-item">
                 <div class="alert-dot ${a.estado === 'PENDIENTE' ? 'danger' : a.estado === 'VISTA' ? 'warning' : 'success'}"></div>
                 <div class="alert-info">
                     <h4>${a.titulo || 'Alerta Costera'}</h4>

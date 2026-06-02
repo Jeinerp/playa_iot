@@ -8,23 +8,55 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-        # Aquí agregamos los datos que Angular necesita
+        
+        # 1. Datos básicos del usuario
         data['user'] = {
             'username': self.user.username,
             'email': self.user.email,
             'nombre': self.user.first_name or self.user.username,
         }
-        # Enviamos roles y recursos (aunque sea un superuser, enviamos arrays vacíos o sus permisos)
-        data['roles'] = [{'nombre': 'Superadministrador'}] if self.user.is_superuser else []
+        
+        # 2. Cargar roles asociados al usuario de forma dinámica desde la base de datos
+        from .models import Rol, UsuarioHasRol, Recurso, RecursoHasRol
+        
+        roles_queryset = Rol.objects.filter(usuariohasrol__usuario_idusuarios=self.user, estado=1)
+        roles_list = [{'id': r.idrol, 'nombre': r.nombre} for r in roles_queryset]
+        
+        # Si es superusuario de Django, le garantizamos permisos de Administrador implícitos
+        if self.user.is_superuser and not any(r['nombre'] == 'Administrador' for r in roles_list):
+            roles_list.append({'id': 1, 'nombre': 'Administrador'})
+            
+        data['roles'] = roles_list
+        
+        # 3. Cargar recursos/menús autorizados según los roles del usuario
+        if self.user.is_superuser:
+            # Superusuarios ven todos los recursos activos
+            recursos_queryset = Recurso.objects.filter(estado='activo')
+        else:
+            # Usuarios normales ven solo los recursos asignados a sus roles
+            roles_ids = [r['id'] for r in roles_list]
+            recursos_queryset = Recurso.objects.filter(
+                recursohasrol__rol_idrol__in=roles_ids, 
+                estado='activo'
+            ).distinct()
+            
+        # Ordenamos las opciones del menú por su orden configurado
+        recursos_sorted = sorted(
+            list(recursos_queryset), 
+            key=lambda r: int(r.orden) if r.orden.isdigit() else 99
+        )
+            
         data['recursos'] = [
-            {'id': 1, 'nombre': 'Dashboard', 'path': '/dashboard', 'icono': 'layout-dashboard', 'orden': 1},
-            {'id': 2, 'nombre': 'Dispositivos', 'path': '/dispositivos', 'icono': 'cpu', 'orden': 2},
-            {'id': 3, 'nombre': 'Zonas', 'path': '/zonas', 'icono': 'map', 'orden': 3},
-            {'id': 4, 'nombre': 'Sensores', 'path': '/sensores', 'icono': 'thermometer', 'orden': 4},
-            {'id': 5, 'nombre': 'Lecturas', 'path': '/lecturas', 'icono': 'database', 'orden': 5},
-            {'id': 6, 'nombre': 'Alertas', 'path': '/alertas', 'icono': 'alert-triangle', 'orden': 6},
-            {'id': 7, 'nombre': 'Roles', 'path': '/roles', 'icono': 'shield', 'orden': 7}
-        ] # Menú oficial
+            {
+                'id': rec.idRecursos,
+                'nombre': rec.nombre,
+                'path': rec.path,
+                'icono': rec.icono,
+                'orden': int(rec.orden) if rec.orden.isdigit() else 99
+            }
+            for rec in recursos_sorted
+        ]
+        
         return data
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,7 +72,62 @@ class UsuarioSerializer(serializers.ModelSerializer):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['idusuarios', 'nombre', 'apellido', 'username','password'] # No incluimos password por seguridad
+        fields = ['idusuarios', 'nombre', 'apellido', 'username', 'password']
+        extra_kwargs = {'password': {'write_only': True}} # Ocultar password en las consultas
+
+    def create(self, validated_data):
+        from django.contrib.auth.models import User
+        from django.contrib.auth.hashers import make_password
+        
+        # 1. Crear en la tabla de autenticación oficial (auth_user)
+        auth_user = User.objects.create(
+            username=validated_data['username'],
+            password=make_password(validated_data['password']),
+            first_name=validated_data.get('nombre', ''),
+            last_name=validated_data.get('apellido', '')
+        )
+        
+        # 2. Crear en la tabla personalizada con el mismo ID
+        usuario = Usuario.objects.create(
+            idusuarios=auth_user.id,
+            nombre=validated_data.get('nombre', ''),
+            apellido=validated_data.get('apellido', ''),
+            username=validated_data['username'],
+            password=validated_data['password']
+        )
+        return usuario
+
+    def update(self, instance, validated_data):
+        from django.contrib.auth.models import User
+        from django.contrib.auth.hashers import make_password
+        
+        # Actualizar en la tabla personalizada
+        instance.nombre = validated_data.get('nombre', instance.nombre)
+        instance.apellido = validated_data.get('apellido', instance.apellido)
+        instance.username = validated_data.get('username', instance.username)
+        if 'password' in validated_data:
+            instance.password = validated_data['password']
+        instance.save()
+        
+        # Buscar y actualizar en la tabla de autenticación oficial (User)
+        try:
+            auth_user = User.objects.get(id=instance.idusuarios)
+            auth_user.username = instance.username
+            auth_user.first_name = instance.nombre
+            auth_user.last_name = instance.apellido
+            if 'password' in validated_data:
+                auth_user.password = make_password(validated_data['password'])
+            auth_user.save()
+        except User.DoesNotExist:
+            User.objects.create(
+                id=instance.idusuarios,
+                username=instance.username,
+                password=make_password(validated_data.get('password', 'default123')),
+                first_name=instance.nombre,
+                last_name=instance.apellido
+            )
+            
+        return instance
 
 class RolSerializer(serializers.ModelSerializer):
     class Meta:

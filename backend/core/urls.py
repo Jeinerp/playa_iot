@@ -38,4 +38,5 @@ urlpatterns = [
     path('login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('dashboard-summary/', DashboardSummaryView.as_view(), name='dashboard_summary'),
+    path('esp32/upload/', ESP32UploadView.as_view(), name='esp32_upload'),
 ]

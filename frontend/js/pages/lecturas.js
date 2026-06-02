@@ -17,8 +17,8 @@ let searchTerm = '';
 const varColors = {
     'Temperatura':      { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', icon: 'thermometer', unit: '°C' },
     'Humedad':          { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', icon: 'droplets',    unit: '%' },
-    'Nivel de Agua':    { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)',  icon: 'waves',       unit: 'm' },
     'Calidad del Aire': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)', icon: 'wind',        unit: 'AQI' },
+    'Radiacion UV':     { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)',  icon: 'sun',        unit: 'UV' },
 };
 
 export function renderLecturas() {

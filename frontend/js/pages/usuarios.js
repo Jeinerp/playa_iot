@@ -136,22 +136,35 @@ async function loadRoles(container) {
 }
 
 async function loadAsignaciones(container) {
-    let [data, roles] = await Promise.all([api.get('/usuario-roles/'), api.get('/roles/')]);
+    let [data, roles, usuarios] = await Promise.all([
+        api.get('/usuario-roles/'), 
+        api.get('/roles/'),
+        api.get('/usuarios/')
+    ]);
     data = Array.isArray(data) ? data : data?.results || [];
     roles = Array.isArray(roles) ? roles : roles?.results || [];
+    usuarios = Array.isArray(usuarios) ? usuarios : usuarios?.results || [];
+
     const rMap = {}; roles.forEach(r => rMap[r.idrol] = r.nombre);
+    const uMap = {}; usuarios.forEach(u => uMap[u.idusuarios] = `${u.nombre} ${u.apellido} (@${u.username})`);
 
     container.innerHTML = `<div class="page-header-actions" style="margin-bottom:var(--space-md);"><button class="btn btn-primary" id="btn-add-ur"><i data-lucide="plus"></i> Asignar Rol</button></div><div id="ur-table"></div>`;
     if (window.lucide) lucide.createIcons();
 
     document.getElementById('btn-add-ur').addEventListener('click', () => {
         const rOpts = roles.map(r => `<option value="${r.idrol}">${r.nombre}</option>`).join('');
+        const uOpts = usuarios.map(u => `<option value="${u.idusuarios}">${u.nombre} ${u.apellido} (@${u.username})</option>`).join('');
+        
         openModal('Asignar Rol a Usuario', `
-            <div class="form-group"><label class="form-label">ID Usuario</label><input class="form-input" id="f-uid" type="number"></div>
+            <div class="form-group"><label class="form-label">Usuario</label><select class="form-select" id="f-uid">${uOpts}</select></div>
             <div class="form-group"><label class="form-label">Rol</label><select class="form-select" id="f-rol">${rOpts}</select></div>
         `, async () => {
-            await api.post('/usuario-roles/', { usuario_idusuarios: parseInt(document.getElementById('f-uid').value), rol_idrol: parseInt(document.getElementById('f-rol').value) });
-            showToast('Asignado', 'Rol asignado', 'success'); loadTab();
+            await api.post('/usuario-roles/', { 
+                usuario_idusuarios: parseInt(document.getElementById('f-uid').value), 
+                rol_idrol: parseInt(document.getElementById('f-rol').value) 
+            });
+            showToast('Asignado', 'Rol asignado', 'success'); 
+            loadTab();
         });
     });
 
@@ -159,7 +172,7 @@ async function loadAsignaciones(container) {
         containerId: 'ur-table',
         columns: [
             { key: 'id', label: 'ID' },
-            { key: 'usuario_idusuarios', label: 'Usuario ID' },
+            { key: 'usuario_idusuarios', label: 'Usuario', render: (v) => uMap[v] || `ID: ${v}` },
             { key: 'rol_idrol', label: 'Rol', render: (v) => rMap[v] || v },
         ],
         data,
